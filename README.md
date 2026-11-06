@@ -21,15 +21,35 @@ rien n'y est jamais écrit ni poussé.
 
 ## Avant de créer le codespace
 
-### 1. Vérifier le quota et le coût
+### 1. Rester dans le GRATUIT
 
-L'environnement exige une machine **4 cœurs / 16 Go** (`hostRequirements`). Le quota gratuit d'un compte
-personnel s'exprime en **heures-cœur** : une machine 4 cœurs le consomme quatre fois plus vite qu'une
-machine 1 cœur, et le stockage du codespace est facturé à part. Vérifier, avant la création :
+L'environnement est réglé pour la plus petite machine qui suffit : **2 cœurs / 8 Go** (`hostRequirements`).
+Mesuré le 06/11 : pic de 4,5 Go de mémoire pendant l'installation, environ 1,5 Go en fonctionnement.
 
-- GitHub → **Settings → Billing and plans → Codespaces** : heures-cœur restantes, stockage, limite de dépense ;
-- le délai d'**arrêt automatique** (Settings → Codespaces → Default idle timeout) : un codespace arrêté ne
-  consomme plus d'heures-cœur, mais son stockage reste compté tant qu'il n'est pas supprimé.
+**Quota gratuit d'un compte personnel GitHub (par mois) :**
+
+| Ressource | Quota gratuit | Ce que l'environnement consomme |
+|---|---|---|
+| Calcul | 120 heures-cœur | Machine 2 cœurs = **2 heures-cœur par heure ouverte** → environ **60 h d'utilisation par mois** |
+| Stockage | 15 Go-mois | Le codespace occupe **environ 9 Go** (images Supabase ~4 Go, code et dépendances ~3 Go, construction ~1 Go). Gardé tout un mois : ~9 Go-mois ; supprimé après deux semaines : ~4,5 Go-mois |
+
+**Pour ne JAMAIS payer :**
+
+1. GitHub → **Settings → Billing and plans → Spending limits** (ou *Budgets*) : vérifier que la limite de
+   dépense Codespaces est à **0 $**. C'est la valeur par défaut d'un compte personnel sans moyen de paiement :
+   une fois le quota épuisé, les codespaces s'arrêtent, rien n'est facturé.
+2. Settings → **Codespaces** → *Default idle timeout* : **30 minutes** (ou moins). Un codespace inactif
+   s'arrête seul, et un codespace **arrêté ne consomme plus d'heures-cœur**.
+3. Quand vous avez fini une séance : *Codespaces → ⋯ → Stop codespace* (ou fermer l'onglet et laisser
+   l'arrêt automatique faire). Les données restent.
+4. Quand vous n'en avez plus besoin pour plusieurs semaines : *⋯ → Delete*. Le stockage n'est compté que
+   tant que le codespace existe. Le recréer plus tard refait l'installation (15-20 min) et resème des
+   données neuves.
+5. **Un seul codespace à la fois** : deux codespaces doublent le stockage (2 × 9 Go dépasse le quota).
+6. Suivre la consommation : Settings → **Billing and plans → Usage** (Codespaces : heures-cœur et Go-mois).
+
+> Les chiffres de quota sont ceux du forfait GitHub Free connus à ce jour : les vérifier sur la page de
+> facturation de votre compte, qui fait foi.
 
 ### 2. Créer les deux secrets Codespaces
 
@@ -46,8 +66,8 @@ GitHub → **Settings → Codespaces → Secrets → New secret**, chacun **attr
 ## Créer et ouvrir l'environnement
 
 1. Sur `marouaneboutchich-hub/test` : **Code → Codespaces → ⋯ → New with options**, branche
-   `claude/gifted-keller-b8s7ax`, machine **4-core**.
-2. L'installation se lance d'elle-même (`scripts/installer.sh`, ~10 à 15 min la première fois :
+   `claude/gifted-keller-b8s7ax`, machine **2-core** (la plus petite proposée).
+2. L'installation se lance d'elle-même (`scripts/installer.sh`, ~15 à 20 min la première fois sur 2 cœurs :
    images Docker, dépendances, construction). Elle se termine par la liste des comptes.
 3. Onglet **PORTS** de VS Code → ligne **« ProCab (test) »** (port 3000, visibilité *Private*) → ouvrir
    l'adresse `https://<codespace>-3000.app.github.dev`.

@@ -45,12 +45,12 @@ for depot in "${PROCAB_REPOS[@]}"; do
   url="https://github.com/$PROCAB_OWNER/$depot"
   if [ -d "$cible/.git" ]; then
     info "$depot : déjà cloné — mise à jour de $PROCAB_BRANCH"
-    git_procab -C "$cible" fetch --quiet --depth 50 origin "$PROCAB_BRANCH" \
+    git_procab -C "$cible" fetch --quiet --depth 1 origin "$PROCAB_BRANCH" \
       || echec "$depot : impossible de récupérer $PROCAB_BRANCH (jeton absent, expiré ou sans accès ?)"
     git -C "$cible" checkout --quiet --detach FETCH_HEAD
   else
     info "$depot : clonage de $PROCAB_BRANCH"
-    if ! git_procab clone --quiet --depth 50 --branch "$PROCAB_BRANCH" --single-branch "$url" "$cible"; then
+    if ! git_procab clone --quiet --depth 1 --branch "$PROCAB_BRANCH" --single-branch "$url" "$cible"; then
       echec "$depot : clonage refusé. Vérifier le secret Codespaces PROCAB_REPOS_TOKEN (fine-grained, « Contents: Read-only » sur les trois dépôts procab-*, propriétaire $PROCAB_OWNER) et qu'il est bien attribué au dépôt « test »."
     fi
   fi
