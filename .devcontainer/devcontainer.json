@@ -1,0 +1,55 @@
+// ════════════════════════════════════════════════════════════════════════════════════════════
+// Codespace « ProCab — environnement de test ».
+//
+// Tout tourne DANS le codespace : Supabase local (Docker), API, frontend. Aucun identifiant de
+// production n'y est nécessaire ni admis (scripts/lib.sh → garde_environnement).
+//
+// RÉSEAU : un SEUL port est redirigé, le 3000 (le proxy), en visibilité PRIVÉE — seul le titulaire
+// du codespace y accède, connecté à GitHub. Tous les autres ports (API 3001, Next 3002, Supabase
+// 54321-54324, proxy interne 443) sont marqués « ignore » : ils ne sont jamais redirigés
+// automatiquement. Ne pas les rendre publics à la main.
+//
+// SECRETS (Paramètres GitHub → Codespaces → Secrets, attribués au dépôt « test ») :
+//   PROCAB_REPOS_TOKEN  jeton fine-grained, « Contents: Read-only », limité à anashaouzi/procab-db,
+//                       procab-backend, procab-frontend. Lu par git au moment du clonage, jamais écrit.
+//   DEMO_PASSWORD       mot de passe commun des comptes de DÉMONSTRATION (12 caractères min., avec
+//                       majuscule, chiffre et caractère spécial). Jamais écrit dans le dépôt.
+// ════════════════════════════════════════════════════════════════════════════════════════════
+{
+  "name": "ProCab — environnement de test",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "16gb",
+    "storage": "32gb"
+  },
+  "secrets": {
+    "PROCAB_REPOS_TOKEN": {
+      "description": "Jeton GitHub fine-grained en LECTURE SEULE (Contents: Read-only) limité aux trois dépôts anashaouzi/procab-*."
+    },
+    "DEMO_PASSWORD": {
+      "description": "Mot de passe des comptes de démonstration (fictifs). 12 caractères min., majuscule, chiffre, caractère spécial."
+    }
+  },
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": { "label": "ProCab (test)", "onAutoForward": "notify", "visibility": "private" },
+    "443": { "label": "proxy interne (ne pas rediriger)", "onAutoForward": "ignore" },
+    "3001": { "label": "API (interne)", "onAutoForward": "ignore" },
+    "3002": { "label": "Next (interne)", "onAutoForward": "ignore" },
+    "54321": { "label": "Supabase (interne)", "onAutoForward": "ignore" },
+    "54322": { "label": "Postgres (interne)", "onAutoForward": "ignore" },
+    "54324": { "label": "Mailpit (interne)", "onAutoForward": "ignore" }
+  },
+  "otherPortsAttributes": { "onAutoForward": "ignore" },
+  "postCreateCommand": "bash scripts/installer.sh",
+  "postStartCommand": "bash -c 'test -f .local/api.env && bash scripts/demarrer.sh || true'",
+  "customizations": {
+    "codespaces": {
+      "openFiles": ["README.md"]
+    }
+  }
+}

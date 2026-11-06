@@ -1,0 +1,8 @@
+# Copies de travail des trois dépôts du produit (clonées par scripts/installer.sh) — jamais versionnées ici.
+/procab/
+# Fichiers générés au démarrage : variables locales, certificats, journaux, état de Supabase local.
+/.local/
+/supabase/config.toml
+/supabase/.temp/
+/supabase/.branches/
+node_modules/

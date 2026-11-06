@@ -1,0 +1,11 @@
+{
+  "name": "procab-environnement-de-test",
+  "private": true,
+  "description": "Environnement de test ProCab dans GitHub Codespaces : Supabase local, API et frontend, derrière un seul port privé.",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "devDependencies": {
+    "http-proxy": "1.18.1",
+    "supabase": "3.0.0"
+  }
+}
