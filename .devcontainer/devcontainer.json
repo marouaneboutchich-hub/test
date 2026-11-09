@@ -19,7 +19,9 @@
   "name": "ProCab — environnement de test",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    // CLI GitHub : permet de se connecter avec son PROPRE compte (`gh auth login`) au lieu d'un jeton.
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   },
   // Machine 2 cœurs / 8 Go : la plus petite qui suffit, pour tenir dans le quota GRATUIT (120 heures-cœur
   // par mois = environ 60 h d'utilisation). Mesuré le 06/11 : pic de 4,5 Go de mémoire pendant
