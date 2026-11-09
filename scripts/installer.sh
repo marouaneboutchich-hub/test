@@ -28,17 +28,8 @@ info "Adresse de l'environnement : $ORIGINE"
 # git par un « credential helper » qui le LIT dans l'environnement au moment de la requête : il
 # n'est jamais écrit dans une URL, dans .git/config, ni dans le journal. `credential.helper=` (vide)
 # en premier écarte l'assistant propre à Codespaces, dont le jeton ne couvre que ce dépôt-ci.
-git_procab() {
-  if [ -n "${PROCAB_REPOS_TOKEN:-}" ]; then
-    # shellcheck disable=SC2016  # le $ doit rester littéral : c'est le shell de l'assistant qui le lit
-    git -c credential.helper= \
-        -c 'credential.helper=!f() { test "$1" = get || exit 0; echo username=x-access-token; echo "password=${PROCAB_REPOS_TOKEN}"; }; f' \
-        "$@"
-  else
-    git "$@"
-  fi
-}
 
+verifier_acces_depots
 mkdir -p "$PROCAB_DIR"
 : > "$LOCAL_DIR/branches-suivies"
 for depot in "${PROCAB_REPOS[@]}"; do

@@ -17,6 +17,8 @@ if [ "${1:-}" != "--oui" ]; then
   [ "$r" = "o" ] || [ "$r" = "O" ] || { info "Abandon."; exit 0; }
 fi
 
+# L'accès aux dépôts se vérifie AVANT d'effacer : sinon la base est vidée et rien ne la reconstruit.
+verifier_acces_depots
 bash "$RACINE/scripts/arreter.sh" >/dev/null 2>&1 || true
 info "Remise à zéro de la base locale (schéma, comptes Auth et fichiers)"
 supabase_ db reset --local --no-seed >"$LOCAL_DIR/logs/db-reset.log" 2>&1 \

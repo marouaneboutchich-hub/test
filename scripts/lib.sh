@@ -118,3 +118,32 @@ chemin_interne_ok() {
   [ "$(curl -s --noproxy '*' -o /dev/null -w '%{http_code}' --cacert "$cacert" "https://$hote/auth/v1/health" -H 'apikey: x')" = "200" ]
 }
 
+# ── Accès aux dépôts du produit ────────────────────────────────────────────────────────────
+# Le jeton (secret Codespaces PROCAB_REPOS_TOKEN, ou `gh auth token`) est remis à git par un
+# « credential helper » qui le LIT dans l'environnement au moment de la requête : il n'est jamais écrit
+# dans une URL, dans .git/config, ni dans le journal. `credential.helper=` (vide) en premier écarte
+# l'assistant propre à Codespaces, dont le jeton ne couvre que ce dépôt-ci.
+git_procab() {
+  if [ -n "${PROCAB_REPOS_TOKEN:-}" ]; then
+    # shellcheck disable=SC2016  # le $ doit rester littéral : c'est le shell de l'assistant qui le lit
+    git -c credential.helper= \
+        -c 'credential.helper=!f() { test "$1" = get || exit 0; echo username=x-access-token; echo "password=${PROCAB_REPOS_TOKEN}"; }; f' \
+        "$@"
+  else
+    git "$@"
+  fi
+}
+
+# Vérifie AVANT toute opération destructrice que les trois dépôts sont lisibles.
+verifier_acces_depots() {
+  local depot
+  for depot in "${PROCAB_REPOS[@]}"; do
+    if ! git_procab ls-remote --exit-code --heads "https://github.com/$PROCAB_OWNER/$depot" main >/dev/null 2>&1; then
+      if [ -z "${PROCAB_REPOS_TOKEN:-}" ]; then
+        echec "Aucun accès aux dépôts du produit : PROCAB_REPOS_TOKEN n'est pas défini dans ce terminal. Faire : unset GITHUB_TOKEN ; gh auth login --hostname github.com --git-protocol https --web ; export PROCAB_REPOS_TOKEN=\"\$(gh auth token)\" — puis relancer. Rien n'a été modifié."
+      fi
+      echec "Le jeton fourni ne donne pas accès à $PROCAB_OWNER/$depot (expiré, révoqué ou sans droit). Rien n'a été modifié."
+    fi
+  done
+}
+
