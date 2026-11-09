@@ -93,3 +93,25 @@ attendre() { # attendre <description> <secondes> <commande...>
   done
   echec "Délai dépassé en attendant : $quoi"
 }
+
+# ── Adresse publique → proxy local ─────────────────────────────────────────────────────────
+# ⚠️ Docker RÉÉCRIT /etc/hosts à chaque démarrage du conteneur : l'entrée posée à l'installation
+# disparaît au premier redémarrage du codespace. Elle se repose donc à CHAQUE démarrage. Sans elle,
+# le serveur Next et l'API joignent l'adresse publique par le tunnel GitHub (port privé), qui répond
+# 302 vers la connexion GitHub : la session n'est jamais reconnue et l'écran revient au login.
+assurer_hosts() {
+  local hote="$1"
+  if ! grep -qE "^127\.0\.0\.1[[:space:]]+$hote\$" /etc/hosts; then
+    echo "127.0.0.1 $hote" | privilege tee -a /etc/hosts >/dev/null
+  fi
+}
+
+# Vrai seulement si l'adresse publique se RÉSOUT vers 127.0.0.1 ET que Supabase local répond 200
+# par le proxy. Un 302 (tunnel GitHub) ou tout autre code est un ÉCHEC : `curl -f` acceptait les
+# redirections et laissait passer exactement la panne qu'il devait voir.
+chemin_interne_ok() {
+  local hote="$1" cacert="$2"
+  getent hosts "$hote" | grep -q '^127\.0\.0\.1[[:space:]]' || return 1
+  [ "$(curl -s --noproxy '*' -o /dev/null -w '%{http_code}' --cacert "$cacert" "https://$hote/auth/v1/health" -H 'apikey: x')" = "200" ]
+}
+

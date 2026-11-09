@@ -63,9 +63,7 @@ done
 # NEXT_PUBLIC_* et dans SUPABASE_URL) : depuis l'intérieur du codespace, elle est donc résolue vers
 # 127.0.0.1, où le proxy écoute aussi en HTTPS avec un certificat signé par une autorité LOCALE,
 # reconnue des seuls processus Node lancés ici (NODE_EXTRA_CA_CERTS).
-if ! grep -qE "^127\.0\.0\.1[[:space:]]+$HOTE\$" /etc/hosts; then
-  echo "127.0.0.1 $HOTE" | privilege tee -a /etc/hosts >/dev/null
-fi
+assurer_hosts "$HOTE"
 ok "/etc/hosts : $HOTE → 127.0.0.1 (dans le codespace seulement)"
 
 CERTS="$LOCAL_DIR/certs"

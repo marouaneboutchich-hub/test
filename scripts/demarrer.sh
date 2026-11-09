@@ -20,6 +20,7 @@ garde_base_locale "$DATABASE_URL"
 garde_locale SUPABASE_URL "$SUPABASE_URL"
 
 bash "$RACINE/scripts/arreter.sh" --services-seulement >/dev/null 2>&1 || true
+assurer_hosts "$HOTE"   # à chaque démarrage : Docker réécrit /etc/hosts au redémarrage du codespace
 mkdir -p "$LOCAL_DIR/pids"
 
 attendre "Docker" 120 docker info
@@ -55,7 +56,8 @@ attendre "API (port $PORT_API)" 90 curl -sf --noproxy "*" "http://127.0.0.1:$POR
 attendre "frontend (port $PORT_NEXT)" 90 curl -sf --noproxy "*" -o /dev/null "http://127.0.0.1:$PORT_NEXT/login"
 attendre "proxy (port $PORT_PROXY)" 30 curl -sf --noproxy "*" -o /dev/null "http://127.0.0.1:$PORT_PROXY/login"
 # Le chemin INTERNE (serveur Next et API → adresse publique) doit fonctionner, avec le certificat local.
-attendre "chemin interne https://$HOTE" 30 curl -sf --noproxy "*" --cacert "$LOCAL_DIR/certs/ac.crt" "$ORIGINE/auth/v1/health" -H "apikey: x"
+attendre "chemin interne https://$HOTE (résolu vers 127.0.0.1, réponse 200 de Supabase local)" 30 \
+  chemin_interne_ok "$HOTE" "$LOCAL_DIR/certs/ac.crt"
 
 ok "API, frontend et proxy démarrés"
 info "Ouvrir : $ORIGINE   (onglet PORTS de VS Code → « ProCab (test) », port 3000, visibilité Privée)"

@@ -169,5 +169,6 @@ serveur Next, API ──(adresse publique → 127.0.0.1)──▶ :443 ───
 | « clonage refusé » | Secret `PROCAB_REPOS_TOKEN` absent, expiré, non attribué au dépôt `test`, ou sans accès aux trois dépôts. |
 | « Supabase local n'a pas démarré » | Voir `.local/logs/supabase-start.log`. Le registre d'images par défaut peut refuser un téléchargement (quota) : le script réessaie automatiquement depuis Docker Hub. |
 | « Le frontend a été construit pour … » | Le nom du codespace a changé : relancer `bash scripts/installer.sh`. |
+| Connexion acceptée puis retour à la page de connexion | L'adresse publique ne pointe plus vers le proxy local (Docker réécrit `/etc/hosts` au redémarrage du codespace) : `bash scripts/demarrer.sh` la repose et vérifie le chemin. |
 | Page « Service local indisponible » | Un service démarre encore ou s'est arrêté : `bash scripts/demarrer.sh`, puis les journaux. |
 | Semis : « DEMO_PASSWORD absent » | Créer le secret, redémarrer le codespace (les secrets sont lus au démarrage), puis `node scripts/semer.mjs`. |
