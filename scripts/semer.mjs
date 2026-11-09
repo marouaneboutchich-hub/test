@@ -221,11 +221,13 @@ async function main() {
   const tBenj = await etape(`inscription « ${BENJELLOUN.cabinet.name} »`, () => inscrire(BENJELLOUN));
   const tSouss = await etape(`inscription « ${SOUSS.cabinet.name} »`, () => inscrire(SOUSS));
   const jA = await etape('connexion admin Atlas', () => connexion(ATLAS.admin.email), { critique: true });
+  // Le module Achats n'existe que sur certaines branches (absent de `main`) : une route inconnue répond 404.
+  const achatsPresents = await api('GET', '/purchases/entities', jA).then(() => true, (e) => e.status !== 404);
   if (tBenj) await etape('connexion admin Benjelloun', () => connexion(BENJELLOUN.admin.email));
   if (tSouss) await etape('connexion admin Souss', () => connexion(SOUSS.admin.email));
 
   if (jetonSA) {
-    for (const flag of ['billing', 'purchases']) {
+    for (const flag of achatsPresents ? ['billing', 'purchases'] : ['billing']) {
       await etape(`console : module « ${flag} » activé pour Atlas`, () => api('POST', `/admin/cabinets/${tAtlas}/flag`, jetonSA, { flag, enabled: true }));
     }
   }
@@ -242,7 +244,7 @@ async function main() {
   }
   membres.admin = { id: sql(`select id from users where lower(email)=lower(${lit(ATLAS.admin.email)})`), jeton: jA };
   const droitsAchats = ['purchases:suppliers:read', 'purchases:suppliers:write', 'purchases:suppliers:rib', 'purchases:invoices:read', 'purchases:invoices:write', 'purchases:settings'];
-  for (const [cle, extra] of [['manager', []], ['directrice', ['purchases:suppliers:rib:validate']]]) {
+  for (const [cle, extra] of achatsPresents ? [['manager', []], ['directrice', ['purchases:suppliers:rib:validate']]] : []) {
     if (!membres[cle]?.id) continue;
     await etape(`droits Achats → ${membres[cle].fullName}`, () =>
       api('PATCH', `/cabinet/team/${membres[cle].id}/permissions`, jA, {
@@ -402,42 +404,46 @@ async function main() {
     await api('POST', `/quotes/${id}/issue`, jA, {});
   });
 
-  // 9. Achats : la société « cabinet » et un client, un fournisseur.
+  // 9. Achats — seulement si la branche suivie contient le module (absent de `main`).
   console.log('\n9. Achats');
-  await etape('Achats : société « cabinet » activée', () => api('POST', '/purchases/entities', jA, { kind: 'cabinet' }));
-  const entite = await etape('Achats : société cliente SARL Oasis Distribution activée', () =>
-    api('POST', '/purchases/entities', jA, { kind: 'client', clientId: clients.oasis }),
-  );
-  await etape('Achats : fournisseur « Papeterie du Littoral »', () =>
-    api('POST', '/purchases/suppliers', jA, {
-      legalName: 'Papeterie du Littoral', legalForm: 'sarl', country: 'MA', ice: '002345678000091',
-      ifNumber: '45678912', rcNumber: '123456', rcCourt: 'Casablanca', city: 'Casablanca', email: 'ventes@papeterie-littoral.test',
-    }),
-  );
-  const entiteId = entite?.entity?.id ?? entite?.data?.id ?? entite?.id ?? sql(`select id from accounting_entities where tenant_id = ${lit(tAtlas)} and client_id = ${lit(clients.oasis)} limit 1`);
-  await etape('Achats : facture d’achat déposée (PDF fictif) → brouillon créé', async () => {
-    // Un PDF minimal mais valide, fabriqué ici : aucune pièce réelle.
-    const pdf = Buffer.from(
-      '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj ' +
-        '3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj ' +
-        '4 0 obj<</Length 74>>stream\nBT /F1 18 Tf 60 760 Td (Facture fictive - Papeterie du Littoral - 1 450,00 MAD) Tj ET\nendstream endobj ' +
-        '5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n',
+  if (!achatsPresents) {
+    console.log('  – module Achats absent de cette branche : étape sautée');
+  } else {
+    await etape('Achats : société « cabinet » activée', () => api('POST', '/purchases/entities', jA, { kind: 'cabinet' }));
+    const entite = await etape('Achats : société cliente SARL Oasis Distribution activée', () =>
+      api('POST', '/purchases/entities', jA, { kind: 'client', clientId: clients.oasis }),
     );
-    const ticket = await api('POST', `/purchases/entities/${entiteId}/invoices/uploads`, jA, {
-      name: 'facture-papeterie-littoral-demo.pdf', mimeType: 'application/pdf', sizeBytes: pdf.length,
+    await etape('Achats : fournisseur « Papeterie du Littoral »', () =>
+      api('POST', '/purchases/suppliers', jA, {
+        legalName: 'Papeterie du Littoral', legalForm: 'sarl', country: 'MA', ice: '002345678000091',
+        ifNumber: '45678912', rcNumber: '123456', rcCourt: 'Casablanca', city: 'Casablanca', email: 'ventes@papeterie-littoral.test',
+      }),
+    );
+    const entiteId = entite?.entity?.id ?? entite?.data?.id ?? entite?.id ?? sql(`select id from accounting_entities where tenant_id = ${lit(tAtlas)} and client_id = ${lit(clients.oasis)} limit 1`);
+    await etape('Achats : facture d’achat déposée (PDF fictif) → brouillon créé', async () => {
+      // Un PDF minimal mais valide, fabriqué ici : aucune pièce réelle.
+      const pdf = Buffer.from(
+        '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj ' +
+          '3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj ' +
+          '4 0 obj<</Length 74>>stream\nBT /F1 18 Tf 60 760 Td (Facture fictive - Papeterie du Littoral - 1 450,00 MAD) Tj ET\nendstream endobj ' +
+          '5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n',
+      );
+      const ticket = await api('POST', `/purchases/entities/${entiteId}/invoices/uploads`, jA, {
+        name: 'facture-papeterie-littoral-demo.pdf', mimeType: 'application/pdf', sizeBytes: pdf.length,
+      });
+      const documentId = ticket?.document?.id ?? ticket?.documentId;
+      if (!ticket?.uploadUrl || !documentId) throw new Error(`ticket inattendu : ${JSON.stringify(ticket).slice(0, 200)}`);
+      // Même envoi que le navigateur (FormData, en-têtes storage-js) ; l'adresse publique est ramenée
+      // au Supabase local, que le semis joint directement.
+      const url = ticket.uploadUrl.replace(apiEnv.SUPABASE_URL, SUPABASE);
+      const form = new FormData();
+      form.append('cacheControl', '3600');
+      form.append('', new Blob([pdf], { type: 'application/pdf' }), 'facture-papeterie-littoral-demo.pdf');
+      const put = await fetch(url, { method: 'PUT', body: form, headers: { authorization: `Bearer ${ANON}`, apikey: ANON, 'x-upsert': 'false' } });
+      if (!put.ok) throw new Error(`envoi au stockage refusé : ${put.status} ${(await put.text()).slice(0, 200)}`);
+      await api('POST', `/purchases/entities/${entiteId}/invoices/uploads/${documentId}/confirm`, jA, {});
     });
-    const documentId = ticket?.document?.id ?? ticket?.documentId;
-    if (!ticket?.uploadUrl || !documentId) throw new Error(`ticket inattendu : ${JSON.stringify(ticket).slice(0, 200)}`);
-    // Même envoi que le navigateur (FormData, en-têtes storage-js) ; l'adresse publique est ramenée
-    // au Supabase local, que le semis joint directement.
-    const url = ticket.uploadUrl.replace(apiEnv.SUPABASE_URL, SUPABASE);
-    const form = new FormData();
-    form.append('cacheControl', '3600');
-    form.append('', new Blob([pdf], { type: 'application/pdf' }), 'facture-papeterie-littoral-demo.pdf');
-    const put = await fetch(url, { method: 'PUT', body: form, headers: { authorization: `Bearer ${ANON}`, apikey: ANON, 'x-upsert': 'false' } });
-    if (!put.ok) throw new Error(`envoi au stockage refusé : ${put.status} ${(await put.text()).slice(0, 200)}`);
-    await api('POST', `/purchases/entities/${entiteId}/invoices/uploads/${documentId}/confirm`, jA, {});
-  });
+  }
 
   // 10. États d'abonnement des deux autres cabinets.
   console.log('\n10. États des cabinets');

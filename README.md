@@ -1,8 +1,28 @@
 # ProCab — environnement de test (GitHub Codespaces)
 
 Un ProCab **complet et isolé**, qui tourne entièrement dans un codespace : Supabase local (Postgres 15,
-authentification, stockage, temps réel), l'API et le frontend de la branche de développement
-`claude/jolly-keller-orcvzj`, et un jeu de données **fictives** prêt à manipuler.
+authentification, stockage, temps réel), l'API et le frontend de la branche suivie (fichier
+`.procab-branche`, aujourd'hui `claude/gifted-keller-b8s7ax`), et un jeu de données **fictives** prêt à
+manipuler.
+
+## Tester ce que Claude développe
+
+La branche suivie dans les trois dépôts du produit est écrite dans **`.procab-branche`**. Pour chaque
+dépôt, si cette branche n'existe pas encore sur GitHub (elle naît au premier push de développement, et un
+lot peut ne toucher qu'un dépôt), l'environnement suit **`main`** et le dit. `.local/branches-suivies`
+montre, dépôt par dépôt, la branche et le commit réellement servis.
+
+Après chaque livraison de Claude sur la branche :
+
+```bash
+bash scripts/mettre-a-jour.sh
+```
+
+Il récupère les derniers commits, applique **seulement les migrations nouvelles** (les données de test
+sont conservées), reconstruit et redémarre. Si la base a été construite depuis une autre branche, il
+s'arrête et demande une réinitialisation (`bash scripts/reinitialiser.sh`).
+
+Changer de branche suivie : écrire son nom dans `.procab-branche`, puis `bash scripts/reinitialiser.sh`.
 
 Ce dépôt ne contient que la configuration de l'environnement. Les trois dépôts du produit
 (`anashaouzi/procab-db`, `procab-backend`, `procab-frontend`) sont **clonés en lecture** au démarrage ;
@@ -82,8 +102,8 @@ Mot de passe : la valeur de votre secret `DEMO_PASSWORD`.
 |---|---|---|
 | `superadmin@procab.test` | Super-administrateur plateforme | Console `/admin` |
 | `admin@atlas-conseil.test` — Karim Alaoui | Admin du cabinet (associé) | Espace cabinet |
-| `directrice@atlas-conseil.test` — Salma Idrissi | Directrice (manager) — droits Achats + validation des RIB | Espace collaborateur (+ cabinet) |
-| `manager@atlas-conseil.test` — Youssef Berrada | Manager — droits Achats | Espace collaborateur (+ cabinet) |
+| `directrice@atlas-conseil.test` — Salma Idrissi | Directrice (manager) — droits Achats + validation des RIB (si le module est présent) | Espace collaborateur (+ cabinet) |
+| `manager@atlas-conseil.test` — Youssef Berrada | Manager — droits Achats (si le module est présent) | Espace collaborateur (+ cabinet) |
 | `senior@atlas-conseil.test` — Nadia Tazi | Collaboratrice senior | Espace collaborateur |
 | `assistant@atlas-conseil.test` — Omar Fassi | Collaborateur assistant | Espace collaborateur |
 | `contact@oasis-distribution.test` — Hicham Bennani | Client portail, tous droits | Portail |
@@ -94,7 +114,7 @@ Mot de passe : la valeur de votre secret `DEMO_PASSWORD`.
 ## Ce que contient le jeu de données
 
 - **Fiduciaire Atlas Conseil** (Casablanca) — abonnée (offre Business, 12 mois, virement déclaré puis vérifié
-  dans la console), modules **Facturation** et **Achats** activés :
+  dans la console), module **Facturation** activé, et **Achats** quand la branche suivie contient ce module :
   6 clients ; 2 contacts portail ; 4 missions avec équipe et tâches (clôture annuelle, TVA, CNSS en retard,
   conseil avec un consultant externe) ; ~30 saisies de temps sur trois semaines ; une demande de pièces ;
   une facture payée, une facture échue impayée, un brouillon, un devis émis ; Achats : société « cabinet »
@@ -131,6 +151,10 @@ bash scripts/arreter.sh               # arrêter API, frontend et proxy (--tout 
 ```
 
 ```bash
+bash scripts/mettre-a-jour.sh         # derniers commits de la branche + migrations nouvelles, données conservées
+```
+
+```bash
 bash scripts/reinitialiser.sh         # TOUT effacer (base locale) et resemer
 ```
 
@@ -153,7 +177,8 @@ serveur Next, API ──(adresse publique → 127.0.0.1)──▶ :443 ───
 - Le proxy réécrit vers l'adresse publique les redirections que Next construit avec son adresse interne
   (`localhost:3002`) — ce que fait Vercel en production.
 - Base : `procab-db/sql/` appliqué dans l'ordre, sans les opérations marquées `@rejeu: ignorer`, comme la
-  CI « Rejeu du schéma ». Une seule préparation de plateforme précède les migrations : retirer à
+  CI « Rejeu du schéma ». Complément : `mission_members.planned_start/planned_end`, qui existent en production
+  mais qu'aucune migration ne crée avant `0158` (absente de `main`) — idempotent, sans effet quand 0158 est là. Une seule préparation de plateforme précède les migrations : retirer à
   `anon`/`authenticated` les droits par défaut que le Supabase local accorde pour `supabase_admin` (la
   migration 0134 l'exige, et seul `supabase_admin` peut le faire) — rien n'est assoupli, le contrôle de 0134
   juge ensuite l'état obtenu.

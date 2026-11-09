@@ -11,8 +11,11 @@ PROCAB_DIR="$RACINE/procab"          # copies de travail des trois dépôts (ign
 LOCAL_DIR="$RACINE/.local"           # fichiers générés : variables, certificats, journaux
 mkdir -p "$LOCAL_DIR/logs"
 
-# La branche de DÉVELOPPEMENT, celle que l'environnement de test sert. Surchargeable.
-PROCAB_BRANCH="${PROCAB_BRANCH:-claude/jolly-keller-orcvzj}"
+# La branche des dépôts du PRODUIT que l'environnement sert : lue dans `.procab-branche` (une ligne),
+# surchargeable ponctuellement par la variable PROCAB_BRANCH. Changer de branche : modifier le fichier,
+# puis `bash scripts/reinitialiser.sh` (la base doit correspondre aux migrations de la branche).
+PROCAB_BRANCH="${PROCAB_BRANCH:-$(tr -d '[:space:]' < "$RACINE/.procab-branche" 2>/dev/null)}"
+PROCAB_BRANCH="${PROCAB_BRANCH:-claude/gifted-keller-b8s7ax}"
 PROCAB_OWNER="anashaouzi"
 PROCAB_REPOS=(procab-db procab-backend procab-frontend)
 

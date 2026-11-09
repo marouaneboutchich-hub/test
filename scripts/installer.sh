@@ -40,21 +40,32 @@ git_procab() {
 }
 
 mkdir -p "$PROCAB_DIR"
+: > "$LOCAL_DIR/branches-suivies"
 for depot in "${PROCAB_REPOS[@]}"; do
   cible="$PROCAB_DIR/$depot"
   url="https://github.com/$PROCAB_OWNER/$depot"
+  # La branche suivie n'existe peut-être pas ENCORE dans ce dépôt (elle naît au premier push de
+  # développement, et un lot peut ne toucher qu'un dépôt) : on suit alors `main`, en le disant.
+  # Un refus d'ACCÈS, lui, n'est pas une branche absente : il arrête tout.
+  if git_procab ls-remote --exit-code --heads "$url" "$PROCAB_BRANCH" >/dev/null 2>&1; then
+    branche="$PROCAB_BRANCH"
+  elif git_procab ls-remote --exit-code --heads "$url" main >/dev/null 2>&1; then
+    branche="main"
+    info "$depot : la branche $PROCAB_BRANCH n'existe pas encore sur GitHub — on suit main (identique à la production)"
+  else
+    echec "$depot : dépôt inaccessible. Vérifier l'accès : secret PROCAB_REPOS_TOKEN, ou connexion « gh auth login » puis export PROCAB_REPOS_TOKEN=\"\$(gh auth token)\"."
+  fi
   if [ -d "$cible/.git" ]; then
-    info "$depot : déjà cloné — mise à jour de $PROCAB_BRANCH"
-    git_procab -C "$cible" fetch --quiet --depth 1 origin "$PROCAB_BRANCH" \
-      || echec "$depot : impossible de récupérer $PROCAB_BRANCH (jeton absent, expiré ou sans accès ?)"
+    git_procab -C "$cible" fetch --quiet --depth 1 origin "$branche" \
+      || echec "$depot : impossible de récupérer $branche."
     git -C "$cible" checkout --quiet --detach FETCH_HEAD
   else
-    info "$depot : clonage de $PROCAB_BRANCH"
-    if ! git_procab clone --quiet --depth 1 --branch "$PROCAB_BRANCH" --single-branch "$url" "$cible"; then
-      echec "$depot : clonage refusé. Vérifier le secret Codespaces PROCAB_REPOS_TOKEN (fine-grained, « Contents: Read-only » sur les trois dépôts procab-*, propriétaire $PROCAB_OWNER) et qu'il est bien attribué au dépôt « test »."
-    fi
+    info "$depot : clonage de $branche"
+    git_procab clone --quiet --depth 1 --branch "$branche" --single-branch "$url" "$cible" \
+      || echec "$depot : clonage refusé (accès : secret PROCAB_REPOS_TOKEN ou « gh auth login »)."
   fi
-  ok "$depot @ $(git -C "$cible" rev-parse --short HEAD)"
+  echo "$depot $branche $(git -C "$cible" rev-parse --short HEAD)" >> "$LOCAL_DIR/branches-suivies"
+  ok "$depot @ $branche $(git -C "$cible" rev-parse --short HEAD)"
 done
 
 # ── 3. Adresse publique : /etc/hosts + certificat local ────────────────────────────────────
@@ -159,9 +170,12 @@ ok "API et frontend construits"
 
 # ── 7. Démarrage et semis ──────────────────────────────────────────────────────────────────
 bash "$RACINE/scripts/demarrer.sh"
-if [ -n "${DEMO_PASSWORD:-}" ]; then
+deja_seme="$(docker exec -i "$SUPABASE_DB_CONTAINER" psql -U postgres -d postgres -X -tAc "select count(*) from tenants where name = 'Fiduciaire Atlas Conseil'" 2>/dev/null || echo 0)"
+if [ "$deja_seme" != "0" ]; then
+  ok "Données de démonstration présentes (conservées)"
+elif [ -n "${DEMO_PASSWORD:-}" ]; then
   node "$RACINE/scripts/semer.mjs"
 else
-  info "DEMO_PASSWORD absent : données de démonstration NON créées. Ajouter le secret Codespaces, puis : node scripts/semer.mjs"
+  info "DEMO_PASSWORD absent : données de démonstration NON créées. Saisir le mot de passe (read -rsp \"Mot de passe démo : \" DEMO_PASSWORD && export DEMO_PASSWORD), puis : node scripts/semer.mjs"
 fi
 ok "Environnement de test prêt : $ORIGINE"

@@ -23,13 +23,9 @@ supabase_ db reset --local --no-seed >"$LOCAL_DIR/logs/db-reset.log" 2>&1 \
   || echec "Échec de la remise à zéro — voir $LOCAL_DIR/logs/db-reset.log"
 # `db reset` ne vide pas le stockage objet : on retire les fichiers déposés lors des essais.
 docker exec -i "$SUPABASE_DB_CONTAINER" psql -U supabase_admin -d postgres -X -q -c "delete from storage.objects" >/dev/null 2>&1 || true
-rm -f "$LOCAL_DIR/migrations-appliquees"
+rm -f "$LOCAL_DIR/migrations-appliquees" "$LOCAL_DIR/migrations-appliquees.liste"
 
-bash "$RACINE/scripts/migrer.sh"
-bash "$RACINE/scripts/demarrer.sh"
-if [ -n "${DEMO_PASSWORD:-}" ]; then
-  node "$RACINE/scripts/semer.mjs"
-else
-  info "DEMO_PASSWORD absent : base vide (aucun compte). Ajouter le secret Codespaces puis : node scripts/semer.mjs"
-fi
+# L'installateur remet le code sur la branche suivie (.procab-branche), applique les migrations sur la
+# base vierge, reconstruit, redémarre et resème : la base correspond alors exactement à la branche.
+bash "$RACINE/scripts/installer.sh"
 ok "Réinitialisation terminée"
